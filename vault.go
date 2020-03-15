@@ -1,7 +1,6 @@
 package vault
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
 )
@@ -140,13 +139,13 @@ func (v *vault) Keys() []string {
 
 func NewVault(cap int) Vault {
 	v := &vault{}
-	v.store, v.keys = sync.Map{}, newKeys(cap)
+	v.store, v.keys = sync.Map{}, newKeys()
 	v.cap, v.l = cap, 0
 	v.markDirty()
 	return v
 }
 
-func newKeys(cap int) keys {
+func newKeys() keys {
 	return keys{
 		mx: sync.Mutex{},
 		ks: make([]string, 0),
