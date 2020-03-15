@@ -23,11 +23,11 @@ func TestNewVault(t *testing.T) {
 			store: sync.Map{},
 			keys: keys{
 				mx: sync.Mutex{},
-				ks: make([]string, 1),
+				ks: make([]string, 0),
 			},
 			l:     0,
 			cap:   1,
-			dirty: 0,
+			dirty: 1,
 		}},
 	}
 	for _, tt := range tests {
@@ -58,8 +58,8 @@ func Test_keys_add(t *testing.T) {
 			args   args
 		}{name: "", fields: fields{
 			mx: sync.Mutex{},
-			ks: make([]string, 1),
-		}, args: args{key: ""}},
+			ks: make([]string, 0),
+		}, args: args{key: "test"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -67,12 +67,19 @@ func Test_keys_add(t *testing.T) {
 				mx: tt.fields.mx,
 				ks: tt.fields.ks,
 			}
+			k.add("test")
+
+			for _, k := range k.ks {
+				if k != "test" {
+					t.Error("key must be equal'test'")
+				}
+			}
 			t.Log(k)
 		})
 	}
 }
 
-func Test_keys_deleteFirst(t *testing.T) {
+func Test_keys_shift(t *testing.T) {
 	type fields struct {
 		mx sync.Mutex
 		ks []string
@@ -95,6 +102,7 @@ func Test_keys_deleteFirst(t *testing.T) {
 				mx: tt.fields.mx,
 				ks: tt.fields.ks,
 			}
+
 			t.Log(k)
 		})
 	}
@@ -128,7 +136,7 @@ func Test_vault_Get(t *testing.T) {
 			l:     0,
 			cap:   1,
 			dirty: 1,
-		}, args: args{key: ""}, want: ""},
+		}, args: args{key: "test"}, want: 1},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -139,6 +147,7 @@ func Test_vault_Get(t *testing.T) {
 				cap:   tt.fields.cap,
 				dirty: tt.fields.dirty,
 			}
+			v.Put("test", 1)
 			if got := v.Get(tt.args.key); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Get() = %v, want %v", got, tt.want)
 			}
@@ -431,4 +440,35 @@ func Test_vault_unmarkDirty(t *testing.T) {
 			t.Log(v)
 		})
 	}
+}
+
+func TestVault_Integration(t *testing.T) {
+	v := NewVault(3) // Create vault to store 3 key-value elements (string: string)
+
+	v.Put("key1", "value1") // Add "key1": "value1"
+	if v.Len() != 1 {
+		t.Errorf("len must 1 - not %d", v.Len())
+	}
+
+	v.Put("key2", "value2") // Add "key2": "value2"
+	if v.Len() != 2 {
+		t.Errorf("len must 2 - not %d", v.Len())
+	}
+
+	v.Put("key3", "value3") // Add "key3": "value3"
+	if v.Len() != 3 {
+		t.Errorf("len must 3 - not %d", v.Len())
+	}
+
+	if val := v.Get("key1"); val != "value1" {
+		t.Errorf("Get('key1') must be 'value1' - not %d", val)
+
+	}
+
+	v.Put("key4", "value4") // Add "key3": "value3" and remove "key2" as earliest addressed one
+	if v.Len() != 3 {
+		t.Errorf("len must 3 - not %d", v.Len())
+	}
+
+	t.Log(v.Keys()) // [key1 key4 key3] // keys order doesn't matter here
 }

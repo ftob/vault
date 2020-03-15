@@ -25,7 +25,7 @@ type keys struct {
 }
 
 //
-func (k keys) add(key string) {
+func (k *keys) add(key string) {
 	k.mx.Lock()
 	defer k.mx.Unlock()
 
@@ -33,11 +33,18 @@ func (k keys) add(key string) {
 }
 
 //
-func (k keys) shift() {
+func (k *keys) shift() {
 	k.mx.Lock()
 	defer k.mx.Unlock()
+	ks := make([]string, 0)
+	for k, v := range k.ks {
+		if k == 0 {
+			continue
+		}
 
-	copy(k.ks, k.ks[1:])
+		ks = append(ks, v)
+	}
+	k.ks = ks
 }
 
 //
@@ -50,7 +57,7 @@ type vault struct {
 }
 
 //
-func (v vault) Len() int {
+func (v *vault) Len() int {
 	if v.isDirty() {
 		v.l = v.len()
 		v.unmarkDirty()
@@ -60,17 +67,17 @@ func (v vault) Len() int {
 }
 
 //
-func (v vault) isDirty() bool {
+func (v *vault) isDirty() bool {
 	return v.dirty == Dirty
 }
 
 //
-func (v vault) markDirty() {
+func (v *vault) markDirty() {
 	atomic.StoreUint32(&v.dirty, Dirty)
 }
 
 ///
-func (v vault) unmarkDirty() {
+func (v *vault) unmarkDirty() {
 	atomic.StoreUint32(&v.dirty, NotDirty)
 }
 
@@ -83,18 +90,23 @@ func (v vault) len() int {
 	return i
 }
 
-func (v vault) Put(key string, value interface{}) {
-	defer v.markDirty()
+func (v *vault) Put(key string, value interface{}) {
 	v.store.Store(key, value)
+	v.keys.add(key)
+	v.markDirty()
 
-	if v.Len() >= v.cap {
-		v.store.Delete(v.keys.ks[0])
-		v.keys.add(key)
-		v.keys.shift()
+	if v.Len() > v.cap {
+		v.shiftStore()
 	}
 }
 
-func (v vault) Get(key string) interface{} {
+func (v *vault) shiftStore() {
+	v.store.Delete(v.keys.ks[0])
+	v.keys.shift()
+	v.markDirty()
+}
+
+func (v *vault) Get(key string) interface{} {
 	if e, ok := v.store.Load(key); ok {
 		return e
 	} else {
@@ -102,7 +114,7 @@ func (v vault) Get(key string) interface{} {
 	}
 }
 
-func (v vault) Keys() []string {
+func (v *vault) Keys() []string {
 	return v.keys.ks
 }
 
@@ -117,6 +129,6 @@ func NewVault(cap int) Vault {
 func newKeys(cap int) keys {
 	return keys{
 		mx: sync.Mutex{},
-		ks: make([]string, cap),
+		ks: make([]string, 0),
 	}
 }
