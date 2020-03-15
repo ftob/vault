@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 )
@@ -30,6 +31,24 @@ func (k *keys) add(key string) {
 	defer k.mx.Unlock()
 
 	k.ks = append(k.ks, key)
+}
+
+func (k *keys) touch(key string) {
+	k.mx.Lock()
+	defer k.mx.Unlock()
+
+	var te string
+	ks := make([]string, 0)
+
+	for _, v := range k.ks {
+		if v == key {
+			te = v
+		} else {
+			ks = append(ks, v)
+		}
+	}
+
+	k.ks = append(ks, te)
 }
 
 //
@@ -108,6 +127,7 @@ func (v *vault) shiftStore() {
 
 func (v *vault) Get(key string) interface{} {
 	if e, ok := v.store.Load(key); ok {
+		v.keys.touch(key)
 		return e
 	} else {
 		return ""
