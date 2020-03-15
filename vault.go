@@ -8,7 +8,6 @@ import (
 const (
 	NotDirty = iota
 	Dirty
-
 )
 
 //
@@ -18,6 +17,7 @@ type Vault interface {
 	Get(key string) interface{}
 	Keys() []string
 }
+
 //
 type keys struct {
 	mx sync.Mutex
@@ -42,11 +42,11 @@ func (k keys) shift() {
 
 //
 type vault struct {
-	store  sync.Map
-	keys   keys
-	l      int
-	cap int
-	dirty  uint32
+	store sync.Map
+	keys  keys
+	l     int
+	cap   int
+	dirty uint32
 }
 
 //
@@ -108,14 +108,15 @@ func (v vault) Keys() []string {
 
 func NewVault(cap int) Vault {
 	v := &vault{}
-	v.store = sync.Map{}
+	v.store, v.keys = sync.Map{}, newKeys(cap)
+	v.cap, v.l = cap, 0
+	v.markDirty()
+	return v
+}
 
-	v.keys = keys{
+func newKeys(cap int) keys {
+	return keys{
 		mx: sync.Mutex{},
 		ks: make([]string, cap),
 	}
-	v.cap = cap
-	v.l = 0
-	v.markDirty()
-	return v
 }
