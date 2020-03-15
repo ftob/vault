@@ -21,7 +21,7 @@ func TestNewVault(t *testing.T) {
 			want Vault
 		}{name: "positive", args: args{cap: 1}, want: &vault{
 			store: sync.Map{},
-			keys:  keys{
+			keys: keys{
 				mx: sync.Mutex{},
 				ks: make([]string, 1),
 			},
@@ -59,7 +59,7 @@ func Test_keys_add(t *testing.T) {
 		}{name: "", fields: fields{
 			mx: sync.Mutex{},
 			ks: make([]string, 1),
-		}, args: args{key:""}},
+		}, args: args{key: ""}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -165,7 +165,7 @@ func Test_vault_Keys(t *testing.T) {
 			want   []string
 		}{name: "", fields: fields{
 			store: sync.Map{},
-			keys:  keys{
+			keys: keys{
 				mx: sync.Mutex{},
 				ks: []string{},
 			},
